@@ -8,10 +8,10 @@ program define pmt2, rclass
 	// August 27: add option to specify whether the the subsamples are a filter - i.e. we toss out observations that are not in the subsample, when calculating leakage, undercoverage, coverage of the difference quantiles, etc.
 	// March 23 2012 : The cutoff is specified as a percentile of the predicted distribution. I will add the option to specify the cutoff as an absolute number. User should specify either C or CAB
 	
-	syntax varlist(min=2 ts) [if] [pw aw iw fw],  Poor(varname numeric) quantilec(varname numeric) [Cutoffs(numlist asc min=1 max=20 >0 <=70 integer) CABsolute(numlist asc min=0 max=20 >=0) Graphme(real -1) logpline(real 0) Usesubsamplebetas(varname numeric) Filter GENerate(name)]
+	syntax varlist(min=2 ts) [if] [pw aw iw fw],  Poor(varname numeric) Quantiles(integer) [Cutoffs(numlist asc min=1 max=20 >0 <=70 integer) CABsolute(numlist asc min=0 max=20 >=0) Graphme(integer -1) logpline(real 0) Usesubsamplebetas(varname numeric) Filter GENerate(name)]
 	version 9.1 
 	marksample touse
-		
+	
 	// Need to get the weights, so that I can use this with the _pctile command below.
 	qui svyset
 	local svyweight = r(wtype)
@@ -62,6 +62,9 @@ program define pmt2, rclass
 	if ("`cutoffs'"=="" & "`cabsolute'"=="") {
 		stop
 	} 
+	 	 
+	// set trace on
+	// set traced 2
 	
 	// foreach x of numlist `cutoffs' { // loop over all the cutoffs to be used
 	foreach x of numlist `cutoffs_to_loopover'	{
@@ -82,7 +85,7 @@ program define pmt2, rclass
 		// local x2 = substr("`x'",1,5)
 		local x2 = round(`x')
 
-		tempvar eligible nonpoor_ineligible poor_ineligible nonpoor_eligible poor_eligible // Quantilec
+		tempvar eligible nonpoor_ineligible poor_ineligible nonpoor_eligible poor_eligible Quantilec
 					
 		qui gen `eligible' =.
 		qui gen `nonpoor_eligible' = .
@@ -117,16 +120,11 @@ program define pmt2, rclass
 		// First generate quantile indicators
 		
 		// Here the classification of quantile is done based on the entire sample. This is probably what most people want.
-		/*
 		qui xtile `Quantilec' = `1' [`svyweight'`svyexp'], n(`quantiles') 
-		*/
-		// need to get the number of quantiles
-		svy: tab `quantilec'
-		local quantiles = e(r)
 				
 		// 
 		// [`weight'`exp'] is not used, but the darn thing doesn't work unless I include it!
-		pmt_eligible `eligible' [`svyweight'`svyexp'], p(`poor') qu(`quantilec')
+		pmt_eligible `eligible' [`svyweight'`svyexp'], p(`poor') qu(`Quantilec')
 		
 		// No need to make adjustments for filters here
 		// Need to store the results somewhere, somehow
@@ -148,12 +146,6 @@ program define pmt2, rclass
 			// di "scalar coverage_cutoff`x'_quantile`q' = `temp'"
 		}
 		
-		tempname xlimlower xlimupper ylimlower ylimupper
-		local `xlimlower' = 5
-		local `xlimupper' = 7
-		local `ylimlower' = 5
-		local `ylimupper' = 7
-		
 		if (`graphme'~= -1)  {
 			if ("`filter'"=="filter") {
 				twoway (scatter `logpccd_predicted' `1' if `poor_ineligible'==1, xline(`logpline', lcolor(0)) yline(`logcutoff') mc(red) m(x) ) /* 
@@ -168,11 +160,10 @@ program define pmt2, rclass
 				*/	(scatter `logpccd_predicted' `1' if `nonpoor_ineligible' == 1, mc(green) m(x)) /*
 				*/	(scatter `logpccd_predicted' `1' if `nonpoor_eligible'==1, mc(black) m(x)) /* (scatter `logpccd_predicted' `1' if `Quantilec'==10 & logpccd_predicted < `logcutoff' & `1' ~= . & `logpccd_predicted' ~= ., mc(blue) m(Oh))
 				*/	 /*
-				*/	(scatter `logpccd_predicted' `1' if `poor_eligible' == 1, mc(blue) m(x) xlabel(``xlimlower''(1)``xlimupper'') ylabel(``ylimlower''(1)``ylimupper'') ysc(r(``ylimlower'' ``ylimupper'')) xsc(r(``xlimlower'' ``xlimupper'')) ) /*
+				*/	(scatter `logpccd_predicted' `1' if `poor_eligible' == 1, mc(blue) m(x) xlabel(8(1)12) ylabel(8(1)12) ysc(r(8 12)) xsc(r(8 12)) ) /*
 				*/ , title("Cutoff `x'") legend(lab(1 "Errors of Exclusion") lab(3 "Errors of Inclusion") lab(2 "Nonpoor, Ineligible") lab(4 "Poor Eligible") )
 			}
 		}
-				
 	}	
 end program
 

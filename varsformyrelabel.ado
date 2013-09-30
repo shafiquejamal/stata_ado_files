@@ -4,7 +4,7 @@ program define varsformyrelabel
 	// UPDATE 12-07-2012: Need to change how the variable name for the list of `allunxidvariables' is determined. Need to get it from the variable label, rather than the variable name
 	//
 
-	// Get list of variables that were xi'd
+	// Get list of variables that were xi'd. Use the command: char li 
 	local xivars "`_dta[__xi__Vars__To__Drop__]:'"
 	// We can quit if there are no xi'd vars
 	if (`"`xivars'"'=="") {

@@ -7,11 +7,11 @@ program define pmt_eligible, rclass
 	//					a subsample to predict consumption for the rest of the sample (that change actually applies only to pmt2.ado, not pmt_eligible (this program)
 	//					Also removing reduncancy for pmt_eligible in having to specifiy the Quantiles variable AND the number of Quantiles.
 	// November 01, 2011 : Modified to calculate eligibility compliance
-	// January 30, 2013 : Want to calculate inclusion error rate (% of beneficiaries that are outside the target group) and exclusion error rate (% of target group that are not beneficiaries)
+	// 
 	
 	// syntax varlist(min=1 max=1) [if] [pw aw iw fw], Poor(varname numeric) QUantilec(varname numeric) Quantiles(integer) [, SUBsetcutoff]
 	// syntax varlist(min=1 max=1) [if] [pw aw iw fw], Poor(varname numeric) QUantilec(varname numeric) Quantiles(integer) [SUBsetcutoff]
-	syntax varlist(min=1 max=1) [if] [pw aw iw fw], Poor(varname numeric) QUantilec(varname numeric) [Graphme(real -1)]
+	syntax varlist(min=1 max=1) [if] [pw aw iw fw], Poor(varname numeric) QUantilec(varname numeric) 
 
 	version 9.1 
 	marksample touse
@@ -47,37 +47,23 @@ program define pmt_eligible, rclass
 	
 	count if `eligible' == 1 & `touse'
 	if (r(N) != 0) {
-		cap qui svy : mean `nonpoor_eligible' if `eligible' == 1 & `touse'
-		if (_rc ~= 0) {
-			local leakage = .
-		}
-		else {
-			local leakage 		= _coef[`nonpoor_eligible']
-		}
+		qui svy : mean `nonpoor_eligible' if `eligible' == 1 & `touse'
+		local leakage 		= _coef[`nonpoor_eligible']
 	}
 	else {
 		local leakage       = .
 	}
 	count if `poor' == 1 & `touse'
 	if (r(N) != 0) {
-		cap qui svy : mean `poor_ineligible' if `poor' == 1 & `touse'
-		if (_rc ~= 0) {
-			local undercoverage = .
-		}
-		else {
-			local undercoverage = _coef[`poor_ineligible']
-		}
+		qui svy : mean `poor_ineligible' if `poor' == 1 & `touse'
+		local undercoverage = _coef[`poor_ineligible']
 	}
 	else {
 		local undercoverage = .
 	}
-	cap qui svy : mean `correctly_classified' if `touse'
-	if (_rc ~= 0) {
-		local elig_compliance = .
-	}
-	else {
-		local elig_compliance = _coef[`correctly_classified']
-	}
+	qui svy : mean `correctly_classified' if `touse'
+	local elig_compliance = _coef[`correctly_classified']
+	
 	// di "leakage: `leakage'"
 	// di "undercoverage: `undercoverage'"
 	
@@ -92,13 +78,8 @@ program define pmt_eligible, rclass
 				
 		count if `Quantilec' == `q' & `touse' 
 		if (r(N) != 0) {
-			cap qui svy : mean `eligible' if `Quantilec' == `q' & `touse'
-			if (_rc ~= 0) {
-				return scalar coverage_cutoff_quantile`q' = .
-			}
-			else {
-				return scalar coverage_cutoff_quantile`q' = _coef[`eligible']	
-			}
+			qui svy : mean `eligible' if `Quantilec' == `q' & `touse'
+			return scalar coverage_cutoff_quantile`q' = _coef[`eligible']	
 		}
 		else {
 			return scalar coverage_cutoff_quantile`q' = .
@@ -108,22 +89,12 @@ program define pmt_eligible, rclass
 	// the fraction of the total population covered, i.e. overall coverage rate
 	count if `touse'
 	if (r(N) != 0) {	
-		cap qui svy : mean `eligible' if `touse'
-		if (_rc ~= 0) {
-			local fraction_covered = .
-		}
-		else {	
-			local fraction_covered = _coef[`eligible']
-		}
+		qui svy : mean `eligible' if `touse'
+		local fraction_covered = _coef[`eligible']
 		
 		// the fraction of the total population that is in the target group
-		cap qui svy : mean `poor' if `touse'
-		if (_rc ~= 0) {	
-			local fractionoftotal_in_targetgroup = .
-		}
-		else {	
-			local fractionoftotal_in_targetgroup = _coef[`poor']
-		}
+		qui svy : mean `poor' if `touse'
+		local fractionoftotal_in_targetgroup = _coef[`poor']
 	}
 	else {
 		local fraction_covered = 0
@@ -133,51 +104,12 @@ program define pmt_eligible, rclass
 	// coverage rate of the target group
 	count if `poor' == 1 & `touse'
 	if (r(N) != 0) {	
-		cap qui svy : mean `poor_eligible' if `poor' == 1 & `touse'
-		if (_rc ~= 0) {
-			local coverage_rate_targetgroup = .
-		}
-		else {
-			local coverage_rate_targetgroup = _coef[`poor_eligible']
-		}
+		qui svy : mean `poor_eligible' if `poor' == 1 & `touse'
+		local coverage_rate_targetgroup = _coef[`poor_eligible']
 	}
 	else {
 		local coverage_rate_targetgroup = 0
 	}
-	
-	// *****************************************************************
-	
-	// inclusion error rate: percentage of beneficiaries that are outside of the target group
-	count if `poor' == 1 & `touse'
-	if (r(N) != 0) {	
-		cap qui svy : mean `nonpoor_eligible' if `eligible' == 1 & `touse'
-		if (_rc ~= 0) {
-			local inclusion_error_rate = .
-		}
-		else {	
-			local inclusion_error_rate = _coef[`nonpoor_eligible']
-		}
-	}
-	else {
-		local inclusion_error_rate = 0
-	}
-	
-	// exclusion error rate: percentage of target group that is ineligible
-	count if `poor' == 1 & `touse'
-	if (r(N) != 0) {	
-		cap qui svy : mean `poor_ineligible' if `poor' == 1 & `touse'
-		if (_rc ~= 0) {
-			local exclusion_error_rate = .
-		}
-		else {	
-			local exclusion_error_rate = _coef[`poor_ineligible']
-		}
-	}
-	else {
-		local exclusion_error_rate = 0
-	}
-	
-	// *****************************************************************
 	
 	// targeting accuracy is: coverage rate of the target group * fraction of the total population that is in the target group / overall coverage rate
 	if (`fraction_covered' == 0) {
@@ -190,35 +122,11 @@ program define pmt_eligible, rclass
 	// alternatively, use the sum of poor_eligible over all eligible, and take the mean
 	count if `eligible' == 1 & `touse'
 	if (r(N) != 0) {
-		cap qui svy : mean `poor_eligible' if `eligible' == 1 & `touse'
-		if (_rc ~= 0) {
-			local targeting_accuracy2 = .
-		}
-		else {
-			local targeting_accuracy2 = _coef[`poor_eligible'] 
-		}
+		qui svy : mean `poor_eligible' if `eligible' == 1 & `touse'
+		local targeting_accuracy2 = _coef[`poor_eligible'] 
 	}
 	else {
 		local targeting_accuracy2 = .
-	}
-	
-	if (`graphme'~= -1)  {
-		if ("`filter'"=="filter") {
-			twoway (scatter `logpccd_predicted' `1' if `poor_ineligible'==1, xline(`logpline', lcolor(0)) yline(`logcutoff') mc(red) m(x) ) /* 
-			*/	(scatter `logpccd_predicted' `1' if `nonpoor_ineligible' == 1, mc(green) m(x)) /*
-			*/	(scatter `logpccd_predicted' `1' if `nonpoor_eligible'==1, mc(black) m(x)) /* (scatter `logpccd_predicted' `1' if `Quantilec'==10 & logpccd_predicted < `logcutoff' & `1' ~= . & `logpccd_predicted' ~= ., mc(blue) m(Oh))
-			*/	(scatter `logpccd_predicted' `1' if `poor_eligible' == 1, mc(blue) m(x) xlabel(8(1)12) ylabel(8(1)12) ysc(r(8 12)) xsc(r(8 12)) ) /*
-			*/	(scatter `logpccd_predicted' `1' if `usesubsamplebetas'  == 0, mc(purple) m(oh)) /*
-			*/ , title("Cutoff `x' pctile (TJK 2009)") legend(lab(1 "Errors of Exclusion") lab(3 "Errors of Inclusion") lab(2 "Nonpoor, Ineligible") lab(4 "Poor Eligible") lab(5 "Filtered Out") )
-		}
-		else {
-			twoway (scatter `logpccd_predicted' `1' if `poor_ineligible'==1, xline(`logpline', lcolor(0)) yline(`logcutoff') mc(red) m(x) ) /* 
-			*/	(scatter `logpccd_predicted' `1' if `nonpoor_ineligible' == 1, mc(green) m(x)) /*
-			*/	(scatter `logpccd_predicted' `1' if `nonpoor_eligible'==1, mc(black) m(x)) /* (scatter `logpccd_predicted' `1' if `Quantilec'==10 & logpccd_predicted < `logcutoff' & `1' ~= . & `logpccd_predicted' ~= ., mc(blue) m(Oh))
-			*/	 /*
-			*/	(scatter `logpccd_predicted' `1' if `poor_eligible' == 1, mc(blue) m(x) xlabel(``xlimlower''(1)``xlimupper'') ylabel(``ylimlower''(1)``ylimupper'') ysc(r(``ylimlower'' ``ylimupper'')) xsc(r(``xlimlower'' ``xlimupper'')) ) /*
-			*/ , title("Cutoff `x'") legend(lab(1 "Errors of Exclusion") lab(3 "Errors of Inclusion") lab(2 "Nonpoor, Ineligible") lab(4 "Poor Eligible") )
-		}
 	}
 	
 	// Need to store the results 
@@ -230,9 +138,6 @@ program define pmt_eligible, rclass
 	return scalar fractionoftotal_in_targetgroup = `fractionoftotal_in_targetgroup'
 	return scalar fraction_covered = `fraction_covered'
 	return scalar elig_compliance =`elig_compliance'
-	
-	return scalar inclusion_error_rate = `inclusion_error_rate'
-	return scalar exclusion_error_rate = `exclusion_error_rate'
 	
 end program
 

@@ -6,12 +6,12 @@ program define pmt2, rclass
 	// August 04 2010 : Adding option to use betas from a subsample. STILL NEED TO VERIFY THAT IT IS WORKING PROPERLY. Also removing reduncancy for pmt_eligible in having to specifiy the Quantiles variable AND the number of Quantiles.
 	// August 06 2010 : For threshold, will use bottom X percent of ACTUAL (not predicted) consumption of the ENTIRE sample
 	// August 27: add option to specify whether the the subsamples are a filter - i.e. we toss out observations that are not in the subsample, when calculating leakage, undercoverage, coverage of the difference quantiles, etc.
-	// March 23 2012 : The cutoff is specified as a percentile of the predicted distribution. I will add the option to specify the cutoff as an absolute number. User should specify either C or CAB
 	
-	syntax varlist(min=2 ts) [if] [pw aw iw fw],  Poor(varname numeric) quantilec(varname numeric) [Cutoffs(numlist asc min=1 max=20 >0 <=70 integer) CABsolute(numlist asc min=0 max=20 >=0) Graphme(real -1) logpline(real 0) Usesubsamplebetas(varname numeric) Filter GENerate(name)]
+	
+	syntax varlist(min=2 ts) [if] [pw aw iw fw], Cutoffs(numlist asc min=1 max=20 >0 <=70 integer) Poor(varname numeric) Quantiles(integer) [Graphme(integer -1) logpline(real 0) Usesubsamplebetas(varname numeric) Filter GENerate(name)]
 	version 9.1 
 	marksample touse
-		
+	
 	// Need to get the weights, so that I can use this with the _pctile command below.
 	qui svyset
 	local svyweight = r(wtype)
@@ -47,42 +47,38 @@ program define pmt2, rclass
 	qui count if `logpccd_predicted' ~= .
 	qui local count_predicted = r(N)
 	 	 
-	// should we loop over percentile or absoulute cutoff?
-	// check which option user chose
-	di "cutoffs = `cutoffs'"
-	if ("`cutoffs'"=="") {
-		di "log cutoffs not specified - assume absolute cutoff specified"
-		local cutoffs_to_loopover `cabsolute'
-	}
-	di "cabsolute = `cabsolute'"
-	if ("`cabsolute'"=="") {
-		di "cabsolute not specified - assume log cutoff specified"
-		local cutoffs_to_loopover `cutoffs'
-	}
-	if ("`cutoffs'"=="" & "`cabsolute'"=="") {
-		stop
-	} 
-	
-	// foreach x of numlist `cutoffs' { // loop over all the cutoffs to be used
-	foreach x of numlist `cutoffs_to_loopover'	{
-	
-		if ("`cutoffs'"~="") {
-			// Getting percentiles of the ENTIRE population. This part is only for setting the cutoff. 
-			_pctile `1' [`svyweight'`svyexp'], n(100)
-			// return list
+	foreach x of numlist `cutoffs' { // loop over all the cutoffs to be used
+		
+		// In setting the cutoff, need to account for option of using a filter
+		// not really
+		
+		/*
+		if ("`filter'"=="filter") {
+			
+			// di "FILTER!"
+			// stop
+			// Predict percentiles based on the subsample of the entire population (including samples outside the IF condition) only, not the entire population
+			_pctile `1' [`svyweight'`svyexp'] if `usesubsamplebetas'==1	// don't put the if condition here
+			
 			local logcutoff = r(r`x')
 			di "cutoff: `logcutoff'"
+		
 		}
-		else {
-			local logcutoff = ln(`x')
-			di "cutoff: `logcutoff'"
+		else {  // don't filter the sample
+			// di "NO FILTER"
+			// stop
+			// Unfiltered. Getting percentiles of the ENTIRE population
 		}
+		
+		*/	
+		
+		// Getting percentiles of the ENTIRE population. This part is only for setting the cutoff. 
+		_pctile `1' [`svyweight'`svyexp'], n(100)
+		// return list
+		local logcutoff = r(r`x')
+		di "cutoff: `logcutoff'"
 
-		// for return values, need to fix `x'
-		// local x2 = substr("`x'",1,5)
-		local x2 = round(`x')
-
-		tempvar eligible nonpoor_ineligible poor_ineligible nonpoor_eligible poor_eligible // Quantilec
+		tempvar eligible nonpoor_ineligible poor_ineligible nonpoor_eligible poor_eligible Quantilec
 					
 		qui gen `eligible' =.
 		qui gen `nonpoor_eligible' = .
@@ -112,54 +108,40 @@ program define pmt2, rclass
 		// what percent of the population is covered?
 		qui svy : mean `eligible' if `touse' 
 		local percentofpop_covered = _coef[`eligible']
-		return scalar percentofpop_covered_`x2' = `percentofpop_covered'
+		return scalar percentofpop_covered_`x' = `percentofpop_covered'
 		
 		// First generate quantile indicators
 		
 		// Here the classification of quantile is done based on the entire sample. This is probably what most people want.
-		/*
 		qui xtile `Quantilec' = `1' [`svyweight'`svyexp'], n(`quantiles') 
-		*/
-		// need to get the number of quantiles
-		svy: tab `quantilec'
-		local quantiles = e(r)
 				
 		// 
 		// [`weight'`exp'] is not used, but the darn thing doesn't work unless I include it!
-		pmt_eligible `eligible' [`svyweight'`svyexp'], p(`poor') qu(`quantilec')
+		pmt_eligible `eligible' [`svyweight'`svyexp'], p(`poor') qu(`Quantilec')
 		
 		// No need to make adjustments for filters here
 		// Need to store the results somewhere, somehow
 		
-		return scalar leakage_`x2' = r(leakage)
-		return scalar undercoverage_`x2' = r(undercoverage)
-		return scalar targeting_accuracy_`x2' = r(targeting_accuracy)
-		return scalar targeting_accuracy2_`x2' = r(targeting_accuracy2)
-		return scalar coverage_rate_targetgroup_`x2' = r(coverage_rate_targetgroup)
-		return scalar fractiontotal_targetgroup_`x2' = r(fractionoftotal_in_targetgroup)
-		return scalar fraction_covered_`x2' = r(fraction_covered)
-		
-		return scalar inclusion_error_rate_`x2' = r(inclusion_error_rate)
-		return scalar exclusion_error_rate_`x2' = r(exclusion_error_rate)
+		return scalar leakage_`x' = r(leakage)
+		return scalar undercoverage_`x' = r(undercoverage)
+		return scalar targeting_accuracy_`x' = r(targeting_accuracy)
+		return scalar targeting_accuracy2_`x' = r(targeting_accuracy2)
+		return scalar coverage_rate_targetgroup_`x' = r(coverage_rate_targetgroup)
+		return scalar fractiontotal_targetgroup_`x' = r(fractionoftotal_in_targetgroup)
+		return scalar fraction_covered_`x' = r(fraction_covered)
 		
 		forv q = 1/`quantiles' {
-			return scalar coverage_cutoff`x2'_quantile`q' = r(coverage_cutoff_quantile`q')
+			return scalar coverage_cutoff`x'_quantile`q' = r(coverage_cutoff_quantile`q')
 			local temp = r(coverage_cutoff_quantile`q')
 			// di "scalar coverage_cutoff`x'_quantile`q' = `temp'"
 		}
 		
-		tempname xlimlower xlimupper ylimlower ylimupper
-		local `xlimlower' = 5
-		local `xlimupper' = 7
-		local `ylimlower' = 5
-		local `ylimupper' = 7
-		
-		if (`graphme'~= -1)  {
+		if (`x'==`graphme')  {
 			if ("`filter'"=="filter") {
 				twoway (scatter `logpccd_predicted' `1' if `poor_ineligible'==1, xline(`logpline', lcolor(0)) yline(`logcutoff') mc(red) m(x) ) /* 
 				*/	(scatter `logpccd_predicted' `1' if `nonpoor_ineligible' == 1, mc(green) m(x)) /*
 				*/	(scatter `logpccd_predicted' `1' if `nonpoor_eligible'==1, mc(black) m(x)) /* (scatter `logpccd_predicted' `1' if `Quantilec'==10 & logpccd_predicted < `logcutoff' & `1' ~= . & `logpccd_predicted' ~= ., mc(blue) m(Oh))
-				*/	(scatter `logpccd_predicted' `1' if `poor_eligible' == 1, mc(blue) m(x) xlabel(8(1)12) ylabel(8(1)12) ysc(r(8 12)) xsc(r(8 12)) ) /*
+				*/	(scatter `logpccd_predicted' `1' if `poor_eligible' == 1, mc(blue) m(x) xlabel(3(1)8) ylabel(3(1)8) ysc(r(3 8)) xsc(r(3 8)) ) /*
 				*/	(scatter `logpccd_predicted' `1' if `usesubsamplebetas'  == 0, mc(purple) m(oh)) /*
 				*/ , title("Cutoff `x' pctile (TJK 2009)") legend(lab(1 "Errors of Exclusion") lab(3 "Errors of Inclusion") lab(2 "Nonpoor, Ineligible") lab(4 "Poor Eligible") lab(5 "Filtered Out") )
 			}
@@ -168,11 +150,10 @@ program define pmt2, rclass
 				*/	(scatter `logpccd_predicted' `1' if `nonpoor_ineligible' == 1, mc(green) m(x)) /*
 				*/	(scatter `logpccd_predicted' `1' if `nonpoor_eligible'==1, mc(black) m(x)) /* (scatter `logpccd_predicted' `1' if `Quantilec'==10 & logpccd_predicted < `logcutoff' & `1' ~= . & `logpccd_predicted' ~= ., mc(blue) m(Oh))
 				*/	 /*
-				*/	(scatter `logpccd_predicted' `1' if `poor_eligible' == 1, mc(blue) m(x) xlabel(``xlimlower''(1)``xlimupper'') ylabel(``ylimlower''(1)``ylimupper'') ysc(r(``ylimlower'' ``ylimupper'')) xsc(r(``xlimlower'' ``xlimupper'')) ) /*
-				*/ , title("Cutoff `x'") legend(lab(1 "Errors of Exclusion") lab(3 "Errors of Inclusion") lab(2 "Nonpoor, Ineligible") lab(4 "Poor Eligible") )
+				*/	(scatter `logpccd_predicted' `1' if `poor_eligible' == 1, mc(blue) m(x) xlabel(3(1)8) ylabel(3(1)8) ysc(r(3 8)) xsc(r(3 8)) ) /*
+				*/ , title("Cutoff `x' pctile (TJK 2009)") legend(lab(1 "Errors of Exclusion") lab(3 "Errors of Inclusion") lab(2 "Nonpoor, Ineligible") lab(4 "Poor Eligible") )
 			}
 		}
-				
 	}	
 end program
 

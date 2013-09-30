@@ -1,6 +1,6 @@
 program define evaluate_pmt_models
 
-	syntax varname [using/], model_urban(string) model_rural(string) CABsolute(integer) Target_coverage(real) Poorest20(varname) Quantilec(varname) logpline(real) urban(varname) rural(varname) [TOLerance(real 0.001) step(integer 5) append]
+	syntax varname [using/], model_urban(string) model_rural(string) CABsolute(integer) Target_coverage(real) Poorest20(varname) Quantilec(varname) logpline(real) urban(varname) rural(varname) [TOLerance(real 0.001) step(integer 5) append GENerate(name)]
 	version 10.1
 	tempname equation_rural equation_urban logcutoff cabsolute2 explogcutoff exit_loop
 	tempvar logpccd_hat_rural logpccd_hat_urban logpccd_hat
@@ -134,12 +134,12 @@ program define evaluate_pmt_models
 		if ((`step'==.) | (`: list `cabsolute_loop' in local `cabsolute_tried'') | (``count'' > 30) | ((`r(fraction_covered)' > (`target_coverage' - `tolerance')) & (`r(fraction_covered)' < (`target_coverage' + `tolerance'))) ) {
 			//stop
 			// urban
-			qui xi: pmt2 `varlist' `model_urban' [`svyweight'`svyexp'] if `urban'==1, cab(``cabsolute_loop'')  p(`poorest20') quantilec(`quantilec') logpline(`logpline') // graphme(``cabsolute_loop'')
+			qui xi: pmt2 `varlist' `model_urban' [`svyweight'`svyexp'] if `urban'==1, cab(``cabsolute_loop'')  p(`poorest20') quantilec(`quantilec') logpline(`logpline') graphme(``cabsolute_loop'')
 			varsformyrelabel // again, relabel the categorical variables so that humans can understand them without having to look anything up.
 			dataout_pmt2 , l("Urban model (`: word count `model_urban''):`model_urban'") c(``cabsolute_loop'') f("`using'.csv") q(5) `append' // This just outputs the results from the r values
 
 			// rural
-			qui xi: pmt2 `varlist' `model_rural' [`svyweight'`svyexp'] if `rural'==1, cab(``cabsolute_loop'')  p(`poorest20') quantilec(`quantilec') logpline(`logpline') // graphme(``cabsolute_loop'')
+			qui xi: pmt2 `varlist' `model_rural' [`svyweight'`svyexp'] if `rural'==1, cab(``cabsolute_loop'')  p(`poorest20') quantilec(`quantilec') logpline(`logpline') graphme(``cabsolute_loop'')
 			varsformyrelabel
 			dataout_pmt2 , l("Rural model (`: word count `model_rural''):`model_rural'") c(``cabsolute_loop'') f("`using'.csv") q(5) a
 			
@@ -147,6 +147,9 @@ program define evaluate_pmt_models
 			qui pmt_eligible `eligible_`cabsolute2'' [`svyweight'`svyexp'], p(`poorest20') qu(`quantilec')
 			dataout_pmt_eligible, l("Combined") f("`using'.csv") q(5) c(``cabsolute_loop'') a
 			
+			// generate the variable, if the option to do so was specified
+			di `"generate=`generate'"'
+			gen `generate' = `logpccd_hat'
 			
 			local `exit_loop' = 1
 			exit

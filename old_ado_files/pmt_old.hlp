@@ -1,0 +1,16 @@
+{smcl} {hline} help for {hi:pmt}{right: Shafique Jamal} {hline}
+
+{hi:Evaluates performance of a regression Proxy Means Testing model}
+
+{title:Description} {p} {cmd:pmt} evaluates the performance of a
+regression Proxy Means Testing model. It calculates overall leakage and
+undercoverage rates, as well as coverage at each of the specified
+quantiles. {p_end}
+
+{title:Notes} {p} {cmd:pmt} runs only under Stata 9.1 and above. {p_end}
+
+{title:Author} Shafique Jamal email: {browse
+"mailto:shafique.jamal@gmail.com":shafique.jamal@gmail.com} web: {browse
+"http:shafiquejamal.blogspot.com":http:shafiquejamal.blogspot.com}
+
+{title:Last Updated}: April 15, 2010 @ 23:00:00
