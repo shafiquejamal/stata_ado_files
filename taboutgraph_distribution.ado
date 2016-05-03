@@ -9,6 +9,6 @@ program define taboutgraph_distribution
 				
 	taboutgraph `varlist' `if' `in' using `using' [`weight'`exp'], gcmd(`gcmd') goptions(`goptions') /// 
 		taboutoptions(cells(col) `taboutoptions') `replace' overcategorysuboptions(`overcategorysuboptions') /// 
-		overxsuboptions(`overxsuboptions' )
+		overxsuboptions(`overxsuboptions') singlecategorysubptions(`singlecategorysubptions')
 
 end program 

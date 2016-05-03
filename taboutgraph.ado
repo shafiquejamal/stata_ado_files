@@ -4,7 +4,7 @@ program define taboutgraph
 	// This program requires that the second variable in varlist have a value label attached to it
 	// It plots the column output of the tabout command
 
-	syntax varlist(min=2 max=2) [if] [in] using/ [aweight], GCmd(string) GOptions(string asis) TAboutoptions(string asis) [replace OVERCategorysuboptions(string asis) OVERXsuboptions(string asis)]
+	syntax varlist(min=2 max=2) [if] [in] using/ [aweight], GCmd(string) GOptions(string asis) TAboutoptions(string asis) [replace OVERCategorysuboptions(string asis) OVERXsuboptions(string asis) SINGLECATegorysubptions(string asis)]
 	version 9.1
 	marksample touse
 	// di `"`0'"'
@@ -118,8 +118,8 @@ program define taboutgraph
 	// graph each y var, then all y vars
 	
 	foreach level of local levels {
-		`gcmd' (asis) _v`level', over(x, ) `goptions' subtitle(`"`v`level'_varlabel'"')
-		graph export "`pathtofile_withoutextension'_`v`level'_labelforfilename'.pdf", replace
+		`gcmd' (asis) _v`level', over(x, `singlecategorysubptions') `goptions' subtitle(`"`v`level'_varlabel'"')
+		graph export "`pathtofile_withoutextension'_`v`level'_labelforfilename'.`pathtofile_extension'", replace as(`pathtofile_extension')
 	}
 	/*
 	forv x = 2/`count' {
@@ -140,7 +140,7 @@ program define taboutgraph
 	}
 	*/
 	`gcmd' (asis) _v, over(category, `overcategorysuboptions') over(x, `overxsuboptions') asyvars `goptions'
-	graph export "`pathtofile_withoutextension'_allvars.pdf", replace
+	graph export "`pathtofile_withoutextension'_allvars.`pathtofile_extension'", replace as(`pathtofile_extension')
 	save `"`pathtofile_withoutextension'_long.dta"', replace
 	restore
 end program
