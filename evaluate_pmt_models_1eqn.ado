@@ -1,11 +1,14 @@
 program define evaluate_pmt_models_1eqn
 
-	// 20 July 2013: adding the capability to base the regression coefficients on a reduced set of observations, given by the variable `baseregon'
+	// 20 July 2013: adding the capability to base the regression coefficients on a reduced set of observations, given by the variable `trainingIndicator'
 
-	syntax varname [using/] [if], model(string) CABsolute(integer) Target_coverage(real) Poorest20(varname) Quantilec(varname) logpline(real) [TOLerance(real 0.001) step(integer 5) baseregon(varname numeric) append]
+	syntax varname [using/] [if], model(string) CABsolute(integer) Target_coverage(real) Poorest20(varname) Quantilec(varname) logpline(real) [TOLerance(real 0.001) step(integer 5) trainingIndicator(varname numeric) append]
 	version 10.1
 	tempname equation logcutoff cabsolute2 explogcutoff exit_loop
 	tempvar logpccd_hat
+	
+	// 9 May 2016
+	// regresses varname on model, and predict varname_hat. Evaluates the performance on the training set. Need to 
 	
 	qui svyset	local svyweight = r(wtype)	local svyexp    = r(wexp) 	di "[`svyweight'`svyexp']"
 	
@@ -17,19 +20,19 @@ program define evaluate_pmt_models_1eqn
 
 	// ------------------ Model ------------------------------------------------------------------------------------ 
 	
-	// di `"baseregon=`baseregon'"'
-	if (`"`baseregon'"' == "") {
-		di `"baseregon not specified"'
-		tempvar baseregon
-		gen `baseregon' = 1
+	// di `"trainingIndicator=`trainingIndicator'"'
+	if (`"`trainingIndicator'"' == "") {
+		di `"trainingIndicator not specified"'
+		tempvar trainingIndicator
+		gen `trainingIndicator' = 1
 	}
 	else {
-		di `"baseregon=`baseregon'"'
+		di `"trainingIndicator=`trainingIndicator'"'
 	}
-	// sum `baseregon' [aw`svyexp']
+	// sum `trainingIndicator' [aw`svyexp']
 	// di `"if=`if'"'
 	
-	qui xi: svy: reg `varlist' `model'  if `baseregon'==1	// varlist is varname above
+	qui xi: svy: reg `varlist' `model'  if `trainingIndicator'==1	// varlist is varname above
 	varsformyrelabel // This program relabels vars that are created by xi. The default label is something like "roof_material=3", and this code would change that to "roof_material=slate" for example
 	
 	qui cap drop `logpccd_hat'
@@ -97,7 +100,7 @@ program define evaluate_pmt_models_1eqn
 		// Conditions under which to write the data to file and exit the loop: coverage hasn't changed; same threshold is being tried; more than 10 iterations; coverage is within tolerance of target
 		if ((`step'==.) | (`: list `cabsolute_loop' in local `cabsolute_tried'') | (``count'' > 30) | ((`r(fraction_covered)' > (`target_coverage' - `tolerance')) & (`r(fraction_covered)' < (`target_coverage' + `tolerance'))) ) {
 
-			qui xi: pmt2 `varlist' `model' [`svyweight'`svyexp'] , cab(``cabsolute_loop'')  p(`poorest20') quantilec(`quantilec') logpline(`logpline') u(`baseregon') graphme(``cabsolute_loop'')  
+			qui xi: pmt2 `varlist' `model' [`svyweight'`svyexp'] , cab(``cabsolute_loop'')  p(`poorest20') quantilec(`quantilec') logpline(`logpline') u(`trainingIndicator') graphme(``cabsolute_loop'')  
 			varsformyrelabel // again, relabel the categorical variables so that humans can understand them without having to look anything up.
 			dataout_pmt2 , l("Model (`: word count `model''):`model'") c(``cabsolute_loop'') f("`using'.csv") q(5) `append' // This just outputs the results from the r values
 			

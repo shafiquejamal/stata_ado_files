@@ -1,6 +1,6 @@
 program define pmt2, rclass
 	// July 26 2010
-	// July 31 2010 - this routine uses the pmt_eligible.ado program. I've split this into two, incase one wishes to evaluate the performance of non-regression models
+	// July 31 2010 - this routine uses the pmt_eligible_train_test.ado program. I've split this into two, incase one wishes to evaluate the performance of non-regression models
 	// August 03 2010 : I want to replace the sum command with one that uses survey settings. This works well. Next one will add option to use betas from
 	//					a subsample to predict consumption for the rest of the sample
 	// August 04 2010 : Adding option to use betas from a subsample. STILL NEED TO VERIFY THAT IT IS WORKING PROPERLY. Also removing reduncancy for pmt_eligible in having to specifiy the Quantiles variable AND the number of Quantiles.

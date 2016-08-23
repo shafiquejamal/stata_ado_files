@@ -34,6 +34,8 @@ program define renamevarandvaluelabel
 	local `originalvarname' : word 1 of `labelnames'
 	tempname newvarandlabelname 
 	local `newvarandlabelname' : word 2 of `labelnames'
+	tempname originalVariableLabel 
+	local `originalVariableLabel' : var l ``originalvarname''
 	
 	// Step 1. drop the label with the new label name, if it exists. Wait, if it exists... what do we do? Quit the program
 	cap label list ``newvarandlabelname''
@@ -61,5 +63,11 @@ program define renamevarandvaluelabel
 		rename ``originalvarname'' ``newvarandlabelname''
 	}
 	
+	// lets keep the orignial variable with its value label and variable label
+	clonevar ``originalvarname'' = ``newvarandlabelname''
+	cap la val ``originalvarname'' ``originallabelname''
+	
+	// for the new variable, lets put original name of the variable in the variable label
+	la var ``newvarandlabelname'' `"(``originalvarname'') ``originalVariableLabel''"'
 	
 end

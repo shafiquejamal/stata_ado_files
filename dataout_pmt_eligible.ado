@@ -22,7 +22,11 @@ program define dataout_pmt_eligible
 	else {
 		// di "create new file"
 		file open `fh' using `"`filename'"', w replace all
-		file write `fh' `"Geography Covered`separator'`separator'`separator'Fraction Covered`separator'Cutoff`separator'Leakage`separator'Undercoverage`separator'Targeting Accuracy`separator'Inclusion Error Rate`separator'Exclusion Error Rate`separator'Q1`separator'Q2`separator'Q3`separator'Q4`separator'Q5"' _n
+		local quantileHeadings = ""
+		forv quantile = 1/`q' {
+			local quantileHeadings = "`quantileHeadings'Q`quantile'`separator'"
+		}
+		file write `fh' `"Geography Covered`separator'`separator'`separator'Fraction Covered`separator'Cutoff`separator'Leakage`separator'Undercoverage`separator'Targeting Accuracy`separator'Inclusion Error Rate`separator'Exclusion Error Rate`separator'Eligibility Compliance (accuracy)`separator'`quantileHeadings'"' _n
 	}
 	
 	local percentofpop_covered = r(fraction_covered)
@@ -38,8 +42,9 @@ program define dataout_pmt_eligible
 		local targeting_accuracy   = r(targeting_accuracy2)
 		local inclusion_error_rate = r(inclusion_error_rate)
 		local exclusion_error_rate = r(exclusion_error_rate)
+		local eligibility_compliance = r(elig_compliance)
 
-		local lineout `"`lineout1'`separator'`cutoff'`separator'`leakage'`separator'`undercoverage'`separator'`targeting_accuracy'`separator'`inclusion_error_rate'`separator'`exclusion_error_rate'"'
+		local lineout `"`lineout1'`separator'`cutoff'`separator'`leakage'`separator'`undercoverage'`separator'`targeting_accuracy'`separator'`inclusion_error_rate'`separator'`exclusion_error_rate'`separator'`eligibility_compliance'"'
 	
 		// loop over number of quantiles
 		forv quantile = 1/`q' {

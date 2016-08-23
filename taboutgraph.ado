@@ -4,7 +4,7 @@ program define taboutgraph
 	// This program requires that the second variable in varlist have a value label attached to it
 	// It plots the column output of the tabout command
 
-	syntax varlist(min=2 max=2) [if] [in] using/ [aweight], GCmd(string) GOptions(string asis) TAboutoptions(string asis) [replace OVERCategorysuboptions(string asis) OVERXsuboptions(string asis) SINGLECATegorysubptions(string asis)]
+	syntax varlist(min=2 max=2) [if] [in] using/ [aweight], GCmd(string) GOptions(string asis) TAboutoptions(string asis) [replace OVERCategorysuboptions(string asis) OVERXsuboptions(string asis) SINGLECATegorysubptions(string asis) subtitle]
 	version 9.1
 	marksample touse
 	// di `"`0'"'
@@ -20,8 +20,6 @@ program define taboutgraph
 	// return list
 	
 	// get the filename
-	di `"regexm:"'
-	di regexm(`"`using'"',`"((.*)\.(.+))$"')
 	if (regexm(`"`using'"',`"((.*)\.(.+))$"')) {
 		local pathtofile_original 			= regexs(1)
 		local pathtofile_withoutextension 	= regexs(2)
@@ -31,6 +29,12 @@ program define taboutgraph
 	// di `"pathtofile_withoutextension:`pathtofile_withoutextension'"'
 	// di `"pathtofile_extension:`pathtofile_extension'"'
 	// open the file and process it. 
+	
+	// get the subtitle from the graphoptions 
+	tempname subtitle
+	if (regexm(`"`goptions'"',`"subtitle\((.*)\.\) "')) {
+		local `subtitle' = regexs(1)
+	}
 	
 	local count = 0
 	tempname fhr
@@ -46,7 +50,7 @@ program define taboutgraph
 
 	// First line is variable label. 
 	file read `fhr' line
-	return list
+	// return list
 	local count = 1
 	while r(eof)==0 {
 		local count = `count' + 1
@@ -91,7 +95,7 @@ program define taboutgraph
 	// local labels = r(_labels)
 	// di `"levels:`levels'"'
 
-	qui save `"`pathtofile_withoutextension'_short.dta"', replace
+	qui saveold `"`pathtofile_withoutextension'_short.dta"', replace
 
 	qui drop total
 	qui drop if _n == _N
@@ -103,6 +107,11 @@ program define taboutgraph
 		
 		if (`count'==1) {
 			qui rename `var' x
+			qui capture confirm numeric variable x
+			if _rc {
+				destring x, replace
+			}
+
 		}
 		else {
 			local count_levels = `count_levels' + 1
@@ -117,8 +126,16 @@ program define taboutgraph
 	// COME BACK TO THIS
 	// graph each y var, then all y vars
 	
+	if (`"``subtitle''"'=="") {
+		di "no subtitle"
+		local `subtitle' `"`v`level'_varlabel'"'
+	}
+	else {
+		di `"subtitle: ``subtitle''"'
+	}
 	foreach level of local levels {
-		`gcmd' (asis) _v`level', over(x, `singlecategorysubptions') `goptions' subtitle(`"`v`level'_varlabel'"')
+		// `gcmd' (asis) _v`level', over(x, `singlecategorysubptions') `goptions' subtitle(`"`v`level'_varlabel'"')
+		`gcmd' (asis) _v`level', over(x, `singlecategorysubptions') `goptions' subtitle(`"``subtitle''"')
 		graph export "`pathtofile_withoutextension'_`v`level'_labelforfilename'.`pathtofile_extension'", replace as(`pathtofile_extension')
 	}
 	/*
@@ -141,6 +158,6 @@ program define taboutgraph
 	*/
 	`gcmd' (asis) _v, over(category, `overcategorysuboptions') over(x, `overxsuboptions') asyvars `goptions'
 	graph export "`pathtofile_withoutextension'_allvars.`pathtofile_extension'", replace as(`pathtofile_extension')
-	save `"`pathtofile_withoutextension'_long.dta"', replace
+	saveold `"`pathtofile_withoutextension'_long.dta"', replace
 	restore
 end program
